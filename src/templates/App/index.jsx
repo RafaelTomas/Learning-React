@@ -1,74 +1,33 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDebugValue } from 'react';
 
-const useAsync = (asyncFunction, shouldRun) => {
-  const [state, setState] = useState({
-    result: null,
-    error: null,
-    status: 'idle',
-  });
+const useMediaQuery = (queryValue, initialValue = false) => {
+  const [match, setMatch] = useState(initialValue);
 
-  const run = useCallback(() => {
-    setState({
-      result: null,
-      error: null,
-      status: 'pending',
-    });
-    return asyncFunction()
-      .then((response) => {
-        setState({
-          result: response,
-          error: null,
-          status: 'settled',
-        });
-      })
-      .catch((error) => {
-        setState({
-          result: null,
-          error: error,
-          status: 'error',
-        });
-      });
-  }, [asyncFunction]);
+  useDebugValue('Query');
+
   useEffect(() => {
-    if (shouldRun) {
-      run();
-    }
-  }, [run, shouldRun]);
+    let isMounted = true;
+    const matchMedia = window.matchMedia(queryValue);
 
-  return [run, state.result, state.error, state.status];
-};
+    const handleChange = () => {
+      if (!isMounted) return;
+      setMatch(!!matchMedia.matches);
+    };
+    matchMedia.addEventListener('change', handleChange);
+    setMatch(!!matchMedia.matches);
 
-const fetchData = async () => {
-  const data = await fetch('https://jsonplaceholder.typicode.com/posts');
-  const json = await data.json();
-  return json;
+    return () => {
+      isMounted = false;
+      matchMedia.removeEventListener('change', handleChange);
+    };
+  }, [queryValue]);
+
+  return match;
 };
 
 export const App = () => {
-  const [reFetchData, result, error, status] = useAsync(fetchData, true);
-
-  useEffect(() => {
-    setTimeout(() => {
-      reFetchData();
-    }, 10000);
-  }, [reFetchData]);
-
-  function handleClick() {
-    reFetchData();
-  }
-
-  if (status === 'idle') {
-    return <pre>Nada executando</pre>;
-  }
-  if (status === 'pending') {
-    return <pre>Loading</pre>;
-  }
-  if (status === 'error') {
-    return <pre> {JSON.stringify(error, null, 2)}</pre>;
-  }
-  if (status === 'settled') {
-    return <pre onClick={handleClick}> {JSON.stringify(result, null, 2)}</pre>;
-  }
-
-  return '';
+  const huge = useMediaQuery('(min-width: 980px)');
+  const background = huge ? 'green' : 'black';
+  return <div style={{ fontSize: '60px', background }}>Oi</div>;
 };
